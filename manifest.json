@@ -1,0 +1,22 @@
+{
+  "name": "RP Dataset Creator",
+  "short_name": "RP Dataset",
+  "description": "Buat dataset SFT & ORPO untuk roleplay AI",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#0f0f1a",
+  "theme_color": "#6c5ce7",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

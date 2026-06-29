@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>🎭 RP Dataset Creator</title>
+    <style>
+        :root {
+            --bg: #f5f5f7;
+            --msg-user-bg: #fff;
+            --msg-ai-bg: #dcf8c6;
+            --text-primary: #202124;
+            --text-secondary: #70757a;
+            --border: #e0e0e0;
+            --btn-send-user: #25d366;
+            --btn-send-ai: #6c5ce7;
+            --radius: 16px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            color: var(--text-primary);
+        }
+
+        /* HEADER */
+        .header {
+            padding: 12px 16px;
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+        .avatar {
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            background: #6c5ce7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            font-size: 1.1rem;
+        }
+        .header-info h2 { font-size: 1rem; font-weight: 600; }
+        .header-info p { font-size: 0.8rem; color: var(--text-secondary); }
+        .mode-switch {
+            margin-left: auto;
+            display: flex;
+            background: #eee;
+            border-radius: 20px;
+            padding: 3px;
+        }
+        .mode-btn {
+            background: transparent;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 18px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            color: #666;
+        }
+        .mode-btn.active-sft { background: #e3f2fd; color: #1976d2; }
+        .mode-btn.active-orpo { background: #f3e5f5; color: #7b1fa2; }
+
+        /* CHAT CONTAINER */
+        #chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            min-height: 0;
+            scroll-behavior: smooth;
+        }
+        .empty-state {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            text-align: center;
+            gap: 8px;
+        }
+        .empty-state .icon { font-size: 2.5rem; opacity: 0.4; }
+
+        /* TURN WRAPPER */
+        .turn-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+        .turn-label {
+            text-align: center;
+            font-size: 0.75rem;
+            color: #888;
+            font-weight: 600;
+            border-bottom: 1px dashed #ccc;
+            padding-bottom: 4px;
+            margin-bottom: 4px;
+        }
+
+        /* MESSAGES */
+        .msg {
+            max-width: 90%;
+            min-width: 30%;
+            padding: 10px 14px;
+            border-radius: var(--radius);
+            line-height: 1.5;
+            position: relative;
+            font-size: 0.92rem;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            white-space: pre-wrap;
+            display: inline-block;
+        }
+        .msg.user {
+            align-self: flex-end;
+            background: var(--msg-user-bg);
+            border: 1px solid #c3e6cb;
+            border-bottom-right-radius: 4px;
+        }
+        .msg.ai {
+            align-self: flex-start;
+            background: var(--msg-ai-bg);
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 4px;
+        }
+        .msg-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+        .msg-actions {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            display: none;
+            gap: 4px;
+        }
+        .msg:hover .msg-actions { display: flex; }
+        .msg-actions button {
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            border: none;
+            background: #fff;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+            cursor: pointer;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .msg-actions button:hover { background: #fee; color: #e74c3c; }
+
+        /* ===== THOUGHT CONTAINER (seperti DeepSeek) ===== */
+        .thought-container {
+            background: #f8f9fa;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            margin: 6px 0 10px 0;
+            overflow: hidden;
+        }
+        .thought-header {
+            padding: 10px 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            font-weight: 500;
+            color: #374151;
+            user-select: none;
+            background: #f3f4f6;
+            font-size: 0.9rem;
+        }
+        .thought-header::before {
+            content: "⚛️";
+            margin-right: 8px;
+        }
+        .thought-header::after {
+            content: "▼";
+            margin-left: auto;
+            font-size: 0.7rem;
+            transition: transform 0.2s;
+        }
+        .thought-header.open::after {
+            transform: rotate(180deg);
+        }
+        .thought-content {
+            padding: 14px 16px;
+            display: none;
+            border-top: 1px solid #e5e7eb;
+            font-size: 0.85rem;
+            color: #4b5563;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .thought-content.open {
+            display: block;
+        }
+
+        /* INPUT BAR */
+        .input-bar {
+            padding: 12px 16px;
+            background: #fff;
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        .turn-indicator {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 12px;
+            white-space: nowrap;
+            min-width: 70px;
+            text-align: center;
+            transition: 0.3s;
+        }
+        .turn-indicator.user-turn { background: #e8f5e9; color: #2e7d32; }
+        .turn-indicator.ai-turn { background: #ede7f6; color: #5e35b1; }
+
+        .input-bar input {
+            flex: 1;
+            background: #f5f5f5;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 10px 16px;
+            font-size: 0.9rem;
+            outline: none;
+            transition: 0.2s;
+        }
+        .input-bar input:focus { border-color: #aaa; background: #fff; }
+
+        .send-btn {
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            color: white;
+            flex-shrink: 0;
+        }
+        .send-btn.user-mode { background: var(--btn-send-user); transform: rotate(0deg); }
+        .send-btn.ai-mode { background: var(--btn-send-ai); transform: rotate(180deg); }
+        .send-btn:hover { filter: brightness(1.1); transform: scale(1.05); }
+        .send-btn.ai-mode:hover { transform: rotate(180deg) scale(1.05); }
+
+        /* TOOLBAR */
+        .toolbar {
+            padding: 8px 16px;
+            background: #fafafa;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+        .btn-tool {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px 14px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: 0.2s;
+            color: #444;
+        }
+        .btn-tool:hover { background: #f0f0f0; border-color: #ccc; }
+        .btn-save { background: #2ecc71; color: white; border-color: #2ecc71; }
+        .btn-save:hover { background: #27ae60; }
+        .btn-danger { color: #e74c3c; border-color: #f5c6cb; }
+        .btn-danger:hover { background: #fef2f2; }
+
+        /* ORPO PANEL */
+        .orpo-panel {
+            display: none;
+            padding: 12px 16px;
+            background: #fff5f5;
+            border-top: 2px solid #e74c3c;
+            flex-shrink: 0;
+        }
+        .orpo-panel.active { display: block; }
+        .orpo-panel h4 { font-size: 0.8rem; color: #e74c3c; margin-bottom: 8px; }
+        .orpo-panel textarea {
+            width: 100%;
+            background: #fff;
+            border: 1px solid #f5c6cb;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            resize: vertical;
+            margin-bottom: 8px;
+            font-family: inherit;
+        }
+        .orpo-panel textarea:focus { outline: none; border-color: #e74c3c; }
+        .orpo-panel label { font-size: 0.75rem; color: #c0392b; display: block; margin-bottom: 4px; font-weight: 600; }
+
+        /* MODALS */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(2px);
+        }
+        .modal-overlay.active { display: flex; }
+        .error-box, .edit-box {
+            background: #fff;
+            border-radius: 16px;
+            padding: 24px;
+            width: 90%;
+            max-width: 420px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        .edit-box { max-width: 500px; text-align: left; }
+        .error-box .icon { font-size: 2.5rem; margin-bottom: 12px; }
+        .error-box h3 { color: #e74c3c; margin-bottom: 10px; font-size: 1.1rem; }
+        .error-box p { color: #555; font-size: 0.9rem; line-height: 1.6; margin-bottom: 16px; }
+        .error-box .steps {
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 12px 16px;
+            text-align: left;
+            margin-bottom: 18px;
+            font-size: 0.85rem;
+            line-height: 1.8;
+            color: #444;
+        }
+        .error-box .steps strong { color: #e74c3c; }
+        .error-box button { background: #e74c3c; color: white; border: none; padding: 10px 28px; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 0.9rem; }
+        .edit-box textarea {
+            width: 100%;
+            min-height: 120px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 0.9rem;
+            resize: vertical;
+            font-family: inherit;
+        }
+        .edit-box textarea:focus { outline: none; border-color: #6c5ce7; }
+        .edit-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+    <!-- HEADER -->
+    <div class="header">
+        <div class="avatar">🤖</div>
+        <div class="header-info">
+            <h2>Dataset Creator</h2>
+            <p id="mode-subtitle">Mode: SFT Reasoning</p>
+        </div>
+        <div class="mode-switch">
+            <button class="mode-btn active-sft" id="btn-sft" onclick="switchMode('sft')">📝 SFT</button>
+            <button class="mode-btn" id="btn-orpo" onclick="switchMode('orpo')">⚖️ ORPO</button>
+        </div>
+    </div>
+
+    <!-- CHAT -->
+    <div id="chat-container">
+        <div class="empty-state" id="empty-state">
+            <div class="icon">💬</div>
+            <p>Ketik pesan user lalu tekan kirim<br />Tombol akan berputar otomatis untuk giliran AI</p>
+        </div>
+    </div>
+
+    <!-- ORPO PANEL -->
+    <div class="orpo-panel" id="orpo-panel">
+        <h4>⚖️ ORPO — Lengkapi sebelum simpan</h4>
+        <label>❌ Rejected Response</label>
+        <textarea id="rejected-input" rows="2" placeholder="Respons buruk yang kaku/tidak empatik..."></textarea>
+        <label>💡 Reason</label>
+        <textarea id="reason-input" rows="2" placeholder="Mengapa chosen lebih baik dari rejected..."></textarea>
+    </div>
+
+    <!-- INPUT BAR -->
+    <div class="input-bar">
+        <div class="turn-indicator user-turn" id="turn-indicator">👤 USER</div>
+        <input type="text" id="msg-input" placeholder="Ketik pesan user..." onkeydown="if(event.key==='Enter'){event.preventDefault(); sendMessage();}" />
+        <button class="send-btn user-mode" id="send-btn" onclick="sendMessage()" title="Kirim">➤</button>
+    </div>
+
+    <!-- TOOLBAR -->
+    <div class="toolbar">
+        <button class="btn-tool" onclick="saveConversation()">✅ Simpan</button>
+        <button class="btn-tool" onclick="previewData()">👁️ Preview</button>
+        <button class="btn-tool btn-save" onclick="downloadAndClear()">💾 Download & Bersihkan</button>
+        <button class="btn-tool" onclick="importJSONL()">📂 Import</button>
+        <button class="btn-tool btn-danger" onclick="clearCurrentMode()">🗑️ Hapus Mode Ini</button>
+    </div>
+
+    <!-- MODALS -->
+    <div class="modal-overlay" id="error-modal">
+        <div class="error-box">
+            <div class="icon">🚫</div>
+            <h3 id="error-title">Tidak Bisa Pindah Mode</h3>
+            <p id="error-message"></p>
+            <div class="steps" id="error-steps"></div>
+            <button onclick="closeErrorModal()">Mengerti</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="edit-modal">
+        <div class="edit-box">
+            <h3>✏️ Edit Pesan</h3>
+            <textarea id="edit-textarea"></textarea>
+            <div class="edit-actions">
+                <button class="btn-tool" onclick="closeEditModal()">Batal</button>
+                <button class="btn-tool" style="background:#6c5ce7;color:white;border-color:#6c5ce7;" onclick="saveEdit()">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="file-import" accept=".jsonl,.json" style="display:none" onchange="handleFileImport(event)" />
+
+    <script>
+        // ============================================================
+        // STATE
+        // ============================================================
+        let currentMode = 'sft';
+        let currentTurn = 'user';
+        let currentMessages = [];
+        let sftSaved = [];
+        let orpoSaved = [];
+        let editingIndex = null;
+
+        const chatContainer = document.getElementById('chat-container');
+        const msgInput = document.getElementById('msg-input');
+        const sendBtn = document.getElementById('send-btn');
+        const turnIndicator = document.getElementById('turn-indicator');
+        const emptyState = document.getElementById('empty-state');
+
+        function getSavedArray() { return currentMode === 'sft' ? sftSaved : orpoSaved; }
+        function getModeLabel(m) { return m === 'sft' ? 'SFT Reasoning' : 'ORPO'; }
+
+        // ============================================================
+        // HITUNG JUMLAH TURN
+        // ============================================================
+        function countTurns(messages) {
+            let turns = 0;
+            for (let i = 0; i < messages.length - 1; i++) {
+                if (messages[i].role === 'user' && messages[i+1].role === 'assistant') {
+                    turns++;
+                }
+            }
+            return turns;
+        }
+
+        // ============================================================
+        // FORMAT ASSISTANT CONTENT (pisahkan internal dan response)
+        // ============================================================
+        function formatAssistantContent(content) {
+            const match = content.match(/<internal>([\s\S]*?)<\/internal>/);
+            if (match) {
+                const internal = match[1].trim();
+                const rest = content.replace(/<internal>[\s\S]*?<\/internal>/, '').trim();
+                return { hasInternal: true, internal, response: rest || '(response kosong)' };
+            } else {
+                return { hasInternal: false, internal: '', response: content };
+            }
+        }
+
+        // ============================================================
+        // TURN SYSTEM
+        // ============================================================
+        function setTurn(turn) {
+            currentTurn = turn;
+            if (turn === 'user') {
+                sendBtn.className = 'send-btn user-mode';
+                sendBtn.title = 'Kirim pesan User (ke kiri)';
+                turnIndicator.className = 'turn-indicator user-turn';
+                turnIndicator.textContent = '👤 USER';
+                msgInput.placeholder = currentMode === 'sft' ? 'Ketik pesan user...' : 'Ketik pesan user...';
+            } else {
+                sendBtn.className = 'send-btn ai-mode';
+                sendBtn.title = 'Kirim respons AI (ke kanan)';
+                turnIndicator.className = 'turn-indicator ai-turn';
+                turnIndicator.textContent = '🤖 AI';
+                msgInput.placeholder = currentMode === 'sft' ?
+                    '<internal>reasoning...</internal>\n\n[Baris kosong]\n\n[Respons aktual]' :
+                    'Tulis respons AI yang BAIK (chosen)...';
+            }
+            msgInput.focus();
+        }
+
+        // ============================================================
+        // SEND MESSAGE
+        // ============================================================
+        function sendMessage() {
+            const content = msgInput.value.trim();
+            if (!content) return;
+
+            // Validasi ORPO
+            if (currentTurn === 'ai' && currentMode === 'orpo') {
+                const rej = document.getElementById('rejected-input').value.trim();
+                const rsn = document.getElementById('reason-input').value.trim();
+                if (!rej || !rsn) {
+                    alert('⚠️ Harap isi Rejected Response dan Reason terlebih dahulu sebelum mengirim pesan AI!');
+                    if (!rej) document.getElementById('rejected-input').focus();
+                    else document.getElementById('reason-input').focus();
+                    return;
+                }
+            }
+
+            // Validasi SFT internal
+            if (currentTurn === 'ai' && currentMode === 'sft' && !content.includes('<internal>')) {
+                if (!confirm('⚠️ Mode SFT butuh <internal>reasoning</internal>.\nLanjutkan tanpa reasoning?')) return;
+            }
+
+            if (emptyState) emptyState.style.display = 'none';
+
+            currentMessages.push({ role: currentTurn === 'user' ? 'user' : 'assistant', content });
+            msgInput.value = '';
+
+            // Clear ORPO fields setelah AI terkirim
+            if (currentMode === 'orpo' && currentTurn === 'ai') {
+                document.getElementById('rejected-input').value = '';
+                document.getElementById('reason-input').value = '';
+            }
+
+            setTurn(currentTurn === 'user' ? 'ai' : 'user');
+            renderChat();
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // ============================================================
+        // RENDER CHAT
+        // ============================================================
+        function renderChat() {
+            if (currentMessages.length === 0) {
+                chatContainer.innerHTML = '';
+                chatContainer.appendChild(emptyState);
+                emptyState.style.display = 'flex';
+                updateStats();
+                return;
+            }
+            if (emptyState) emptyState.style.display = 'none';
+            chatContainer.innerHTML = '';
+
+            let turnNumber = 1;
+            let i = 0;
+            while (i < currentMessages.length) {
+                if (i + 1 < currentMessages.length &&
+                    currentMessages[i].role === 'user' &&
+                    currentMessages[i+1].role === 'assistant') {
+
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'turn-wrapper';
+
+                    const label = document.createElement('div');
+                    label.className = 'turn-label';
+                    label.textContent = `— Turn ${turnNumber} —`;
+                    wrapper.appendChild(label);
+
+                    wrapper.appendChild(createMessageElement(currentMessages[i], i));
+                    wrapper.appendChild(createMessageElement(currentMessages[i+1], i+1));
+
+                    chatContainer.appendChild(wrapper);
+                    i += 2;
+                    turnNumber++;
+                } else {
+                    chatContainer.appendChild(createMessageElement(currentMessages[i], i));
+                    i++;
+                }
+            }
+
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            updateStats();
+        }
+
+        // ============================================================
+        // BUAT ELEMEN PESAN (dengan thought container ala DeepSeek)
+        // ============================================================
+        function createMessageElement(msg, idx) {
+            const isUser = msg.role === 'user';
+            const div = document.createElement('div');
+            div.className = `msg ${isUser ? 'user' : 'ai'}`;
+
+            // Label
+            const label = document.createElement('div');
+            label.className = 'msg-label';
+            label.textContent = isUser ? '👤 User' : '🤖 Assistant';
+            div.appendChild(label);
+
+            // Konten
+            if (!isUser && currentMode === 'sft') {
+                const parsed = formatAssistantContent(msg.content);
+                if (parsed.hasInternal) {
+                    // --- THOUGHT CONTAINER ---
+                    const container = document.createElement('div');
+                    container.className = 'thought-container';
+
+                    const header = document.createElement('div');
+                    header.className = 'thought-header';
+                    header.textContent = 'Berpikir selama 4 detik';
+
+                    const content = document.createElement('div');
+                    content.className = 'thought-content';
+                    content.textContent = parsed.internal;
+
+                    // Toggle
+                    header.onclick = () => {
+                        const isOpen = content.style.display === 'block';
+                        content.style.display = isOpen ? 'none' : 'block';
+                        header.classList.toggle('open');
+                    };
+
+                    container.appendChild(header);
+                    container.appendChild(content);
+                    div.appendChild(container);
+
+                    // --- RESPONSE UTAMA ---
+                    const mainResponse = document.createElement('div');
+                    mainResponse.style.cssText = 'margin-top: 6px; white-space: pre-wrap; word-break: break-word;';
+                    mainResponse.textContent = parsed.response;
+                    div.appendChild(mainResponse);
+                } else {
+                    // Tidak ada internal, tampilkan biasa
+                    const contentDiv = document.createElement('div');
+                    contentDiv.className = 'msg-content';
+                    contentDiv.textContent = msg.content;
+                    div.appendChild(contentDiv);
+                }
+            } else {
+                // User atau ORPO
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'msg-content';
+                contentDiv.textContent = msg.content;
+                div.appendChild(contentDiv);
+            }
+
+            // Actions
+            const actions = document.createElement('div');
+            actions.className = 'msg-actions';
+            actions.innerHTML = `
+                <button onclick="openEditModal(${idx})" title="Edit">✏️</button>
+                <button onclick="deleteMessage(${idx})" title="Hapus">🗑️</button>
+            `;
+            div.appendChild(actions);
+
+            return div;
+        }
+
+        function escapeHtml(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+        // ============================================================
+        // EDIT / DELETE
+        // ============================================================
+        function openEditModal(idx) {
+            editingIndex = idx;
+            document.getElementById('edit-textarea').value = currentMessages[idx].content;
+            document.getElementById('edit-modal').classList.add('active');
+        }
+        function closeEditModal() { document.getElementById('edit-modal').classList.remove('active'); editingIndex = null; }
+        function saveEdit() {
+            if (editingIndex !== null) {
+                currentMessages[editingIndex].content = document.getElementById('edit-textarea').value.trim();
+                renderChat();
+                closeEditModal();
+            }
+        }
+        function deleteMessage(idx) { currentMessages.splice(idx, 1); renderChat(); }
+
+        // ============================================================
+        // MODE SWITCH
+        // ============================================================
+        function switchMode(newMode) {
+            if (newMode === currentMode) return;
+            const savedCount = getSavedArray().length;
+            const turnCount = countTurns(currentMessages);
+            const curLabel = getModeLabel(currentMode);
+            const newLabel = getModeLabel(newMode);
+
+            if (turnCount > 0) {
+                showErrorModal(
+                    `Ada ${turnCount} turn draft ${curLabel} belum disimpan.`, [
+                        `Klik "✅ Simpan" untuk menyimpan`,
+                        `Klik "💾 Download & Bersihkan"`,
+                        `Baru bisa pindah ke ${newLabel}`
+                    ]
+                );
+                return;
+            }
+            if (savedCount > 0) {
+                showErrorModal(
+                    `Mode ${curLabel} masih punya ${savedCount} data belum didownload.`, [
+                        `Klik "💾 Download & Bersihkan" dulu`,
+                        `Baru bisa pindah ke ${newLabel}`,
+                        `Atau "🗑️ Hapus Mode Ini" jika tidak diperlukan`
+                    ]
+                );
+                return;
+            }
+
+            currentMode = newMode;
+            applyModeUI();
+        }
+
+        function applyModeUI() {
+            document.getElementById('btn-sft').className = `mode-btn ${currentMode === 'sft' ? 'active-sft' : ''}`;
+            document.getElementById('btn-orpo').className = `mode-btn ${currentMode === 'orpo' ? 'active-orpo' : ''}`;
+            document.getElementById('mode-subtitle').textContent = `Mode: ${getModeLabel(currentMode)}`;
+            document.getElementById('orpo-panel').classList.toggle('active', currentMode === 'orpo');
+            setTurn(currentTurn);
+            renderChat();
+            updateStats();
+        }
+
+        function showErrorModal(msg, steps) {
+            document.getElementById('error-message').innerHTML = msg;
+            document.getElementById('error-steps').innerHTML = steps.map(s => `<div>• <strong>${s}</strong></div>`).join('');
+            document.getElementById('error-modal').classList.add('active');
+        }
+        function closeErrorModal() { document.getElementById('error-modal').classList.remove('active'); }
+
+        // ============================================================
+        // SAVE
+        // ============================================================
+        function saveConversation() {
+            if (countTurns(currentMessages) < 1) { alert('Minimal 1 turn (user + assistant)!'); return; }
+            const sysPrompt = 'Kamu adalah AI assistant yang empatik dan validasi emosi user.';
+
+            if (currentMode === 'sft') {
+                const hasInt = currentMessages.some(m => m.role === 'assistant' && m.content.includes('<internal>'));
+                if (!hasInt && !confirm('⚠️ Tidak ada <internal>. Tetap simpan?')) return;
+                sftSaved.push({ messages: [{ role: 'system', content: sysPrompt }, ...currentMessages.map(m => ({...m}))] });
+            } else {
+                const rej = document.getElementById('rejected-input').value.trim();
+                const rsn = document.getElementById('reason-input').value.trim();
+                if (!rej) { alert('❌ Rejected wajib diisi!'); return; }
+                if (!rsn) { alert('❌ Reason wajib diisi!'); return; }
+                const uMsgs = currentMessages.filter(m => m.role === 'user');
+                const aMsgs = currentMessages.filter(m => m.role === 'assistant');
+                if (!uMsgs.length || !aMsgs.length) { alert('❌ Butuh minimal 1 user dan 1 assistant!'); return; }
+                orpoSaved.push({ prompt: uMsgs.map(m=>m.content).join('\n'), chosen: aMsgs.map(m=>m.content).join('\n'), rejected: rej, reason: rsn });
+                document.getElementById('rejected-input').value = '';
+                document.getElementById('reason-input').value = '';
+            }
+            currentMessages = [];
+            setTurn('user');
+            renderChat();
+            alert(`✅ Tersimpan sebagai ${getModeLabel(currentMode)} #${getSavedArray().length}!`);
+        }
+
+        // ============================================================
+        // DOWNLOAD & CLEAR
+        // ============================================================
+        function downloadAndClear() {
+            const data = getSavedArray();
+            if (!data.length) { alert(`Tidak ada data ${getModeLabel(currentMode)}!`); return; }
+            const lines = data.map(d => JSON.stringify(d));
+            const blob = new Blob([lines.join('\n')], { type: 'application/jsonl' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${currentMode === 'sft' ? 'sft_reasoning' : 'orpo'}_${new Date().toISOString().slice(0,10)}.jsonl`;
+            a.click();
+            URL.revokeObjectURL(url);
+            if (currentMode === 'sft') sftSaved = []; else orpoSaved = [];
+            currentMessages = [];
+            setTurn('user');
+            renderChat();
+            alert(`💾 ${data.length} percakapan didownload & dibersihkan!`);
+        }
+
+        // ============================================================
+        // CLEAR / IMPORT / PREVIEW
+        // ============================================================
+        function clearCurrentMode() {
+            const c = getSavedArray().length;
+            const t = countTurns(currentMessages);
+            if (!confirm(`Hapus ${c} data ${getModeLabel(currentMode)} + ${t} turn draft?`)) return;
+            if (currentMode === 'sft') sftSaved = []; else orpoSaved = [];
+            currentMessages = [];
+            setTurn('user');
+            renderChat();
+        }
+
+        function previewData() {
+            const data = getSavedArray();
+            const label = getModeLabel(currentMode);
+            let t = data.length ? `=== ${label} (${data.length}) ===\n\n` + data.map((d,i)=>`--- ${i+1} ---\n${JSON.stringify(d,null,2)}\n\n`).join('') : `Belum ada data ${label}.`;
+            const turnCount = countTurns(currentMessages);
+            if (turnCount) t += `\n=== DRAFT (${turnCount} turn) ===\n` + currentMessages.map(m=>`[${m.role}] ${m.content.substring(0,100)}...`).join('\n');
+            alert(t);
+        }
+
+        function importJSONL() { document.getElementById('file-import').click(); }
+        function handleFileImport(e) {
+            const f = e.target.files[0]; if (!f) return;
+            const r = new FileReader();
+            r.onload = ev => {
+                try {
+                    let s=0,o=0;
+                    ev.target.result.trim().split('\n').forEach(l => {
+                        if (!l.trim()) return;
+                        const obj = JSON.parse(l);
+                        if (obj.messages) { sftSaved.push(obj); s++; }
+                        else if (obj.prompt && obj.chosen) { orpoSaved.push(obj); o++; }
+                    });
+                    updateStats();
+                    alert(`✅ Import: ${s} SFT + ${o} ORPO`);
+                } catch(err) { alert('❌ Gagal: '+err.message); }
+            };
+            r.readAsText(f);
+            e.target.value = '';
+        }
+
+        // ============================================================
+        // UPDATE STATS
+        // ============================================================
+        function updateStats() {
+            const savedCount = getSavedArray().length;
+            const turnCount = countTurns(currentMessages);
+            document.getElementById('mode-subtitle').textContent =
+                `${getModeLabel(currentMode)} • ${savedCount} tersimpan • ${turnCount} turn draft`;
+        }
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        applyModeUI();
+        setTurn('user');
+        renderChat();
+    </script>
+</body>
+</html>
